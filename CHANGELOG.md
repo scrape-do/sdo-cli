@@ -109,8 +109,9 @@ The first release of `sdo`, the Scrape.do CLI, built on the `sdo-go` SDK.
   before, under 50 MiB now); a credential that straddles the cut is still
   masked whole.
 - CI: every job runs on GitHub-hosted runners, so code from a pull request
-  never reaches the org's persistent self-hosted runners (only CodeQL's result
-  upload runs there, and never for a fork); every checkout drops its token
+  never reaches the org's persistent self-hosted runners (only CodeQL runs
+  there, for same-repository events; a fork's pull request is analysed once
+  merged); every checkout drops its token
   (`persist-credentials: false`); and gitleaks scans with a config and ignore
   list from the workflow, so a pull request cannot allowlist its own secret with
   a `.gitleaks.toml` or `.gitleaksignore`.
