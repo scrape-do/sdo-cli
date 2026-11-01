@@ -305,9 +305,14 @@ func TestOutputFileRefusesSymlinksAndSpecialFiles(t *testing.T) {
 		t.Errorf("directory: exit %d, stderr %q", code, errOut)
 	}
 	// A path that cannot be looked up (its parent is a file) is reported as
-	// it is, not taken for a file to create.
+	// it is, not taken for a file to create. The operating system words the
+	// error: ENOTDIR on Unix, "cannot find the path" on Windows.
+	wantErr := "not a directory"
+	if runtime.GOOS == "windows" {
+		wantErr = "cannot find the path"
+	}
 	_, errOut, code = runCLI(t, "", "--token", "t", "scrape", "https://e.com", "--output-file", filepath.Join(target, "x.html"))
-	if code != exitFailure || !strings.Contains(errOut, "not a directory") {
+	if code != exitFailure || !strings.Contains(errOut, wantErr) {
 		t.Errorf("path under a file: exit %d, stderr %q", code, errOut)
 	}
 }
