@@ -16,6 +16,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/) · [SemVer](https://semv
   (`Jobs`, `TotalCount`, `PageSize`, `PageNumber`, `TotalPages`) and stderr
   shows `page N of M`. Job statuses also carry `AcquiredConcurrency` and
   `LimitConcurrency`.
+- The bundled MCP server (`sdo mcp serve`) gains the async job tools:
+  `async_job_create`, `async_plugin_job_create`, `async_job_status`,
+  `async_task_result`, `async_jobs_list`, `async_job_cancel` and
+  `async_account`.
 
 ### Changed
 

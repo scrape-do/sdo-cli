@@ -205,8 +205,13 @@ The CLI bundles a Model Context Protocol server over stdio:
 sdo mcp serve
 ```
 
-It exposes two tools, `scrape` and `scrape_plugin`; each call spends Scrape.do
-credits, and the tool descriptions say so. Run `sdo auth login` once, then
+It exposes `scrape` and `scrape_plugin`, and the async job tools
+`async_job_create`, `async_plugin_job_create`, `async_job_status`,
+`async_task_result`, `async_jobs_list`, `async_job_cancel` and
+`async_account` (the same set as the standalone
+[sdo-mcp](https://github.com/scrape-do/sdo-mcp) server). The scrape tools and the
+two create tools spend Scrape.do credits; every tool description says whether
+a call does. Run `sdo auth login` once, then
 point your MCP client (Claude Desktop, Cursor, Claude Code, …) at the binary;
 the server reads the token the same way the CLI does, so it need not appear in
 the client's configuration file:
