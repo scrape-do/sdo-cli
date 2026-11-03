@@ -5,7 +5,10 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"strings"
+	"time"
 
 	sdo "github.com/scrape-do/sdo-go"
 	"github.com/spf13/cobra"
@@ -18,6 +21,7 @@ func newJobsCmd(a *app) *cobra.Command {
 	}
 	jobs.AddCommand(
 		newJobsCreateCmd(a),
+		newJobsCreatePluginCmd(a),
 		newJobsStatusCmd(a),
 		newJobsResultCmd(a),
 		newJobsListCmd(a),
@@ -53,6 +57,100 @@ func newJobsCreateCmd(a *app) *cobra.Command {
 	}
 	cmd.Flags().StringArray("option", nil, "job body option as Key=Value, e.g. Super=true (repeatable)")
 	return cmd
+}
+
+func newJobsCreatePluginCmd(a *app) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "create-plugin <key>",
+		Short: "Submit an async plugin job (one task per params entry)",
+		Long: "Submits a plugin job: <key> names the plugin (amazon/pdp, google/search, ...)\n" +
+			"and every entry of the params array becomes one task, with the plugin's own\n" +
+			"parameter names (up to 1000 entries). Give the array with --params as JSON,\n" +
+			"or with --params-file (a path, or - for stdin). --option adds job body\n" +
+			"options such as GeoCode or WebhookURL.",
+		Args: cobra.ExactArgs(1),
+		Example: "  sdo jobs create-plugin amazon/pdp --params '[{\"asin\":\"B0C7BKZ883\",\"geocode\":\"us\"}]'\n" +
+			"  sdo jobs create-plugin google/search --params-file queries.json --option WebhookURL=https://example.com/hook",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			params, err := readPluginParams(cmd)
+			if err != nil {
+				return err
+			}
+			raw, _ := cmd.Flags().GetStringArray("option")
+			options, err := parseOptions(raw)
+			if err != nil {
+				return err
+			}
+			client, err := a.newClient()
+			if err != nil {
+				return err
+			}
+			job, err := client.Jobs().CreatePlugin(cmd.Context(), args[0], params, options)
+			if err != nil {
+				return err
+			}
+			a.printErr(cmd, "created job %s (%d tasks)", job.JobID, len(job.TaskIDs))
+			return a.printJSON(cmd.OutOrStdout(), job)
+		},
+	}
+	cmd.Flags().String("params", "", "the params array as JSON, one object per task")
+	cmd.Flags().String("params-file", "", "read the params array from a JSON file (- for stdin)")
+	cmd.Flags().StringArray("option", nil, "job body option as Key=Value, e.g. GeoCode=us (repeatable)")
+	return cmd
+}
+
+// maxParamsFileBytes bounds what --params-file reads (1000 tasks of generous
+// params fit easily).
+const maxParamsFileBytes = 8 << 20
+
+// readPluginParams takes the params array from --params or --params-file
+// (exactly one of them).
+func readPluginParams(cmd *cobra.Command) ([]map[string]any, error) {
+	f := cmd.Flags()
+	inline, file := f.Changed("params"), f.Changed("params-file")
+	var raw string
+	switch {
+	case inline && file:
+		return nil, usageErrorf("--params and --params-file are mutually exclusive")
+	case inline:
+		raw, _ = f.GetString("params")
+	case file:
+		path, _ := f.GetString("params-file")
+		var r io.Reader
+		if path == "-" {
+			r = cmd.InOrStdin()
+		} else {
+			fh, err := os.Open(path)
+			if err != nil {
+				return nil, usageErrorf("--params-file: %v", err)
+			}
+			defer fh.Close()
+			r = fh
+		}
+		b, err := io.ReadAll(io.LimitReader(r, maxParamsFileBytes+1))
+		if err != nil {
+			return nil, usageErrorf("--params-file: %v", err)
+		}
+		if len(b) > maxParamsFileBytes {
+			return nil, usageErrorf("--params-file is larger than %d bytes", maxParamsFileBytes)
+		}
+		raw = string(b)
+	default:
+		return nil, usageErrorf("give the params array with --params or --params-file")
+	}
+	var list []any
+	if err := decodeJSONInto(raw, &list); err != nil || list == nil {
+		return nil, usageErrorf("params must be a JSON array of objects, one per task")
+	}
+	params := make([]map[string]any, len(list))
+	for i, v := range list {
+		obj, ok := v.(map[string]any)
+		if !ok {
+			return nil, usageErrorf("params entry %d is not a JSON object", i)
+		}
+		params[i] = obj
+	}
+	return params, nil
 }
 
 func newJobsStatusCmd(a *app) *cobra.Command {
@@ -144,22 +242,76 @@ func taskOutcome(tr *sdo.TaskResult) error {
 }
 
 func newJobsListCmd(a *app) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List every job visible to the caller",
-		Args:  cobra.NoArgs,
+		Short: "List jobs a page at a time, with optional filters",
+		Long: "Prints one page of jobs as JSON (Jobs, TotalCount, PageSize, PageNumber,\n" +
+			"TotalPages); the default is the 10 most recent. Filter by --status and by\n" +
+			"start time (--from/--to, RFC 3339 such as 2025-01-01T00:00:00Z), choose\n" +
+			"--sort, and walk --page up to TotalPages.",
+		Args:    cobra.NoArgs,
+		Example: "  sdo jobs list --status success --from 2025-01-01T00:00:00Z --page-size 50",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts, err := listOptions(cmd)
+			if err != nil {
+				return err
+			}
 			client, err := a.newClient()
 			if err != nil {
 				return err
 			}
-			jobs, err := client.Jobs().List(cmd.Context())
+			page, err := client.Jobs().List(cmd.Context(), opts)
 			if err != nil {
 				return err
 			}
-			return a.printJSON(cmd.OutOrStdout(), jobs)
+			a.printErr(cmd, "page %d of %d (%d jobs in total)", page.PageNumber, page.TotalPages, page.TotalCount)
+			return a.printJSON(cmd.OutOrStdout(), page)
 		},
 	}
+	f := cmd.Flags()
+	f.Int("page", 0, "page number, from 1 (default 1)")
+	f.Int("page-size", 0, "jobs per page, 1-100 (default 10)")
+	f.String("status", "", "only jobs in this state: queuing, queued, pending, rotating, success, error, canceled")
+	f.String("from", "", "only jobs started at or after this RFC 3339 time")
+	f.String("to", "", "only jobs started at or before this RFC 3339 time")
+	f.String("sort", "", "start_time_desc (newest first, the default) or start_time_asc")
+	return cmd
+}
+
+// listOptions maps the list flags to the SDK's options; the SDK validates the
+// values, so a bad page size or status is the same error everywhere.
+func listOptions(cmd *cobra.Command) (*sdo.ListJobsOptions, error) {
+	f := cmd.Flags()
+	opts := &sdo.ListJobsOptions{}
+	if f.Changed("page") {
+		opts.Page, _ = f.GetInt("page")
+		if opts.Page < 1 {
+			return nil, usageErrorf("--page must be 1 or more")
+		}
+	}
+	if f.Changed("page-size") {
+		opts.PageSize, _ = f.GetInt("page-size")
+		if opts.PageSize < 1 {
+			return nil, usageErrorf("--page-size must be 1 to 100")
+		}
+	}
+	opts.Status, _ = f.GetString("status")
+	opts.Sort, _ = f.GetString("sort")
+	for _, b := range []struct {
+		flag string
+		dst  *time.Time
+	}{{"from", &opts.StartFrom}, {"to", &opts.StartTo}} {
+		v, _ := f.GetString(b.flag)
+		if v == "" {
+			continue
+		}
+		t, err := time.Parse(time.RFC3339, v)
+		if err != nil {
+			return nil, usageErrorf("--%s must be an RFC 3339 time such as 2025-01-01T00:00:00Z", b.flag)
+		}
+		*b.dst = t
+	}
+	return opts, nil
 }
 
 func newJobsCancelCmd(a *app) *cobra.Command {

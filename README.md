@@ -164,6 +164,11 @@ print to stdout as JSON; a one-line summary prints to stderr.
 # Submit a job for one or more URLs (Super=true becomes a bool; GeoCode=us stays a string):
 sdo jobs create https://a.com https://b.com --option Super=true --option GeoCode=us
 
+# A plugin job: one task per params entry (at most 1000), with the plugin's own
+# parameter names; give the array inline, from a file, or from stdin (-):
+sdo jobs create-plugin amazon/pdp --params '[{"asin":"B0C7BKZ883","geocode":"us"}]'
+sdo jobs create-plugin google/search --params-file queries.json --option WebhookURL=https://example.com/hook
+
 # Inspect a job and its per-task state:
 sdo jobs status <jobID>
 
@@ -175,8 +180,12 @@ sdo jobs result <jobID> <taskID> --json
 # Poll until the task has finished (exit code 4 means "not yet"):
 until sdo jobs result <jobID> <taskID> > page.html; [ $? -ne 4 ]; do sleep 5; done
 
-# List every job, or cancel one:
+# List jobs a page at a time (default: the 10 most recent), filtered by state
+# and start time; stdout has Jobs, TotalCount and TotalPages:
 sdo jobs list
+sdo jobs list --status success --from 2025-01-01T00:00:00Z --sort start_time_asc --page 2 --page-size 50
+
+# Cancel a job:
 sdo jobs cancel <jobID>
 
 # Account concurrency + remaining credits (job API):
@@ -196,8 +205,13 @@ The CLI bundles a Model Context Protocol server over stdio:
 sdo mcp serve
 ```
 
-It exposes two tools, `scrape` and `scrape_plugin`; each call spends Scrape.do
-credits, and the tool descriptions say so. Run `sdo auth login` once, then
+It exposes `scrape` and `scrape_plugin`, and the async job tools
+`async_job_create`, `async_plugin_job_create`, `async_job_status`,
+`async_task_result`, `async_jobs_list`, `async_job_cancel` and
+`async_account` (the same set as the standalone
+[sdo-mcp](https://github.com/scrape-do/sdo-mcp) server). The scrape tools and the
+two create tools spend Scrape.do credits; every tool description says whether
+a call does. Run `sdo auth login` once, then
 point your MCP client (Claude Desktop, Cursor, Claude Code, …) at the binary;
 the server reads the token the same way the CLI does, so it need not appear in
 the client's configuration file:

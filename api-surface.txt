@@ -4,6 +4,7 @@ arg sdo.help #0 command
 arg sdo.jobs.cancel #0 jobID [required]
 arg sdo.jobs.create #0 url [required]
 arg sdo.jobs.create #1 url...
+arg sdo.jobs.create-plugin #0 key [required]
 arg sdo.jobs.result #0 jobID [required]
 arg sdo.jobs.result #1 taskID [required]
 arg sdo.jobs.status #0 jobID [required]
@@ -23,6 +24,7 @@ command sdo.help
 command sdo.jobs
 command sdo.jobs.cancel
 command sdo.jobs.create
+command sdo.jobs.create-plugin
 command sdo.jobs.list
 command sdo.jobs.result
 command sdo.jobs.status
@@ -42,6 +44,15 @@ flag sdo.completion.fish --no-descriptions bool
 flag sdo.completion.powershell --no-descriptions bool
 flag sdo.completion.zsh --no-descriptions bool
 flag sdo.jobs.create --option stringArray
+flag sdo.jobs.create-plugin --option stringArray
+flag sdo.jobs.create-plugin --params string
+flag sdo.jobs.create-plugin --params-file string
+flag sdo.jobs.list --from string
+flag sdo.jobs.list --page int
+flag sdo.jobs.list --page-size int
+flag sdo.jobs.list --sort string
+flag sdo.jobs.list --status string
+flag sdo.jobs.list --to string
 flag sdo.jobs.result --json bool
 flag sdo.jobs.result --raw bool
 flag sdo.plugin --param stringArray
@@ -86,6 +97,21 @@ flag sdo.scrape --wait-until string
 flag sdo.scrape --width int
 flag sdo.scrape --zip-code string
 install sdo github.com/scrape-do/sdo-cli/cmd/sdo
+mcp-param async_job_cancel jobId string [required]
+mcp-param async_job_create options object
+mcp-param async_job_create targets array [required]
+mcp-param async_job_status jobId string [required]
+mcp-param async_jobs_list page integer
+mcp-param async_jobs_list pageSize integer
+mcp-param async_jobs_list sort string enum=start_time_desc|start_time_asc
+mcp-param async_jobs_list startFrom string
+mcp-param async_jobs_list startTo string
+mcp-param async_jobs_list status string enum=queuing|queued|pending|rotating|success|error|canceled
+mcp-param async_plugin_job_create options object
+mcp-param async_plugin_job_create params array [required]
+mcp-param async_plugin_job_create plugin string [required]
+mcp-param async_task_result jobId string [required]
+mcp-param async_task_result taskId string [required]
 mcp-param scrape device string enum=desktop|mobile|tablet
 mcp-param scrape geoCode string
 mcp-param scrape output string enum=raw|markdown
@@ -96,5 +122,12 @@ mcp-param scrape super boolean
 mcp-param scrape url string [required]
 mcp-param scrape_plugin params object
 mcp-param scrape_plugin route string [required]
+mcp-tool async_account
+mcp-tool async_job_cancel
+mcp-tool async_job_create
+mcp-tool async_job_status
+mcp-tool async_jobs_list
+mcp-tool async_plugin_job_create
+mcp-tool async_task_result
 mcp-tool scrape
 mcp-tool scrape_plugin
