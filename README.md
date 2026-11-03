@@ -164,6 +164,11 @@ print to stdout as JSON; a one-line summary prints to stderr.
 # Submit a job for one or more URLs (Super=true becomes a bool; GeoCode=us stays a string):
 sdo jobs create https://a.com https://b.com --option Super=true --option GeoCode=us
 
+# A plugin job: one task per params entry (at most 1000), with the plugin's own
+# parameter names; give the array inline, from a file, or from stdin (-):
+sdo jobs create-plugin amazon/pdp --params '[{"asin":"B0C7BKZ883","geocode":"us"}]'
+sdo jobs create-plugin google/search --params-file queries.json --option WebhookURL=https://example.com/hook
+
 # Inspect a job and its per-task state:
 sdo jobs status <jobID>
 
@@ -175,8 +180,12 @@ sdo jobs result <jobID> <taskID> --json
 # Poll until the task has finished (exit code 4 means "not yet"):
 until sdo jobs result <jobID> <taskID> > page.html; [ $? -ne 4 ]; do sleep 5; done
 
-# List every job, or cancel one:
+# List jobs a page at a time (default: the 10 most recent), filtered by state
+# and start time; stdout has Jobs, TotalCount and TotalPages:
 sdo jobs list
+sdo jobs list --status success --from 2025-01-01T00:00:00Z --sort start_time_asc --page 2 --page-size 50
+
+# Cancel a job:
 sdo jobs cancel <jobID>
 
 # Account concurrency + remaining credits (job API):

@@ -3,6 +3,27 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/) · [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `sdo jobs create-plugin <key>` submits an async plugin job: one task per
+  entry of a JSON params array given with `--params`, or `--params-file`
+  (a path, or `-` for stdin), up to 1000 entries; `--option` adds job body
+  options such as `GeoCode` or `WebhookURL`.
+- `sdo jobs list --page --page-size --status --from --to --sort`: the job list
+  is paginated (10 jobs a page by default). The output is the page object
+  (`Jobs`, `TotalCount`, `PageSize`, `PageNumber`, `TotalPages`) and stderr
+  shows `page N of M`. Job statuses also carry `AcquiredConcurrency` and
+  `LimitConcurrency`.
+
+### Changed
+
+- **Behavior change:** `sdo jobs list` prints a page object instead of a bare
+  array of jobs (read `.Jobs`). It used to show only the first 10 jobs while
+  describing itself as every job.
+- Built on `sdo-go` v0.2.0.
+
 ## [0.1.0] - 2026-11-01
 
 The first release of `sdo`, the Scrape.do CLI, built on the `sdo-go` SDK.
