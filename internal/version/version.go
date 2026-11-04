@@ -7,7 +7,7 @@ package version
 
 // CLI is the sdo CLI version. The release workflow refuses a tag that does not
 // match it, so the binary never reports one version and ships as another.
-const CLI = "0.1.0"
+const CLI = "0.2.0"
 
 // UserAgent identifies the CLI, and the MCP server it bundles, to the gateway.
 const UserAgent = "sdo-cli/" + CLI
