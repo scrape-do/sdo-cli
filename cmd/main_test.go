@@ -25,6 +25,9 @@ func TestMain(m *testing.M) {
 	}
 	testenv.Clear()
 	os.Setenv("SDO_CONFIG_FILE", filepath.Join(dir, "absent", "config.json"))
+	// A dead address, so a test that forgets to point `sdo version --check` at
+	// its own server fails instead of asking the real GitHub API.
+	githubAPI = "http://127.0.0.1:9"
 	code := m.Run()
 	os.RemoveAll(dir)
 	os.Exit(code)

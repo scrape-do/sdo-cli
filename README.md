@@ -3,7 +3,7 @@
 
 A single static binary to scrape the web, call plugins, run async jobs, and
 serve MCP. Built on the [`sdo-go`](https://github.com/scrape-do/sdo-go) SDK.
-No telemetry, no update check, no UI.
+No telemetry, no automatic update check, no UI.
 
 ## Install
 
@@ -25,6 +25,25 @@ With a Go toolchain (1.26+), once `sdo-cli` and `sdo-go` are published:
 ```bash
 go install github.com/scrape-do/sdo-cli/cmd/sdo@latest   # installs a binary named sdo
 ```
+
+### Checking for updates
+
+`sdo version --check` prints the versions as `sdo version` does, then asks
+GitHub whether a newer release exists:
+
+```bash
+sdo version --check
+```
+
+It sends one anonymous request to
+`https://api.github.com/repos/scrape-do/sdo-cli/releases/latest`, identified
+only by the `User-Agent` header `sdo-cli/<version>`; your Scrape.do token is
+never read or sent. It is the only command that contacts anything other than
+Scrape.do, and it never runs on its own: there is no background, startup or
+periodic check. When a newer release exists it prints the upgrade commands and
+the release page, and still exits `0`. When the check itself fails (no network,
+a timeout after 5 seconds, GitHub's limit for anonymous requests) the versions
+are still printed and it exits `1` with the reason on stderr.
 
 ### Build from source
 
@@ -71,6 +90,9 @@ sdo usage
 
 # Versions (the CLI's and the SDK's):
 sdo version
+
+# The same, then ask GitHub whether a newer release exists (see Checking for updates):
+sdo version --check
 ```
 
 Every call spends Scrape.do credits; `--render` and `--super` cost more.
@@ -240,7 +262,7 @@ redacted; see [SECURITY.md](SECURITY.md#bundled-mcp-server).
 | Code | Meaning |
 | --- | --- |
 | 0 | success |
-| 1 | the request or local I/O failed |
+| 1 | the request or local I/O failed (for `sdo version --check`: the check could not be completed; a newer release is not a failure) |
 | 2 | usage error: unknown command or flag, wrong arguments, or input rejected before sending (a bad URL, an out-of-range timeout) |
 | 3 | authentication: no token found, or the gateway refused it |
 | 4 | `sdo jobs result`: the task has not finished yet; try again later |

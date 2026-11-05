@@ -15,13 +15,29 @@ import (
 const CLIVersion = version.CLI
 
 func newVersionCmd() *cobra.Command {
-	return &cobra.Command{
+	var check bool
+	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print the sdo CLI and SDK versions",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_, err := fmt.Fprintf(cmd.OutOrStdout(), "sdo CLI %s\nsdo-go SDK %s\n", CLIVersion, sdo.Version)
-			return err
+			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "sdo CLI %s\nsdo-go SDK %s\n", CLIVersion, sdo.Version); err != nil {
+				return err
+			}
+			if !check {
+				return nil
+			}
+			latest, err := latestRelease(cmd.Context())
+			if err == nil {
+				err = reportRelease(cmd.OutOrStdout(), CLIVersion, latest)
+			}
+			if err != nil {
+				return fmt.Errorf("could not check for a newer release: %w", err)
+			}
+			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&check, "check", false,
+		"also ask GitHub (api.github.com, anonymously) whether a newer sdo release exists")
+	return cmd
 }

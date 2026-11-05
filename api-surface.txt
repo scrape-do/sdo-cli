@@ -96,6 +96,7 @@ flag sdo.scrape --wait-selector string
 flag sdo.scrape --wait-until string
 flag sdo.scrape --width int
 flag sdo.scrape --zip-code string
+flag sdo.version --check bool
 install sdo github.com/scrape-do/sdo-cli/cmd/sdo
 mcp-param async_job_cancel jobId string [required]
 mcp-param async_job_create options object
