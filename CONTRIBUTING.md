@@ -105,6 +105,22 @@ channel: `vX.Y.Z-rc.N` becomes a GitHub **pre-release** after approval in the
 
 The `release` and `prerelease` environments have required reviewers and a deployment rule limited to `v*` tags. Keep them: an environment that does not exist is created on first use with no protection.
 
+### Homebrew and Scoop
+
+The build job also runs `go run ./tools/pkgmanifests -version X.Y.Z -checksums dist/checksums.txt -out dist/pkgmanifests`, which writes the Homebrew formula (`Formula/sdo.rb`) and the Scoop manifest (`bucket/sdo.json`) for the version from `checksums.txt` alone, and uploads them as the `pkgmanifests` artifact; the smoke job lints the formula (`brew style`, `ruby -c`) on macOS and parses the manifest on Windows. Its golden files in `tools/pkgmanifests/testdata/` are the real v0.2.0 files; after an intended change to the output, regenerate them with `go test ./tools/pkgmanifests -update` and review the diff.
+
+For a final release (never a release candidate), two more jobs run after the GitHub Release exists:
+
+- **package-managers**, on the self-hosted runners: checks with plain bash that every URL in the two files is this release's and every hash is the one in the signed `checksums.txt`, then commits `Formula/sdo.rb` to `scrape-do/homebrew-tap` and `bucket/sdo.json` to `scrape-do/scoop-bucket` on `main` with GitHub's GraphQL `createCommitOnBranch` (GitHub signs the commit; the org's ruleset refuses unsigned ones), messages `sdo X.Y.Z`. A re-run that finds identical files skips with a notice.
+- **verify-install**, on GitHub-hosted runners, without a token: `brew install scrape-do/tap/sdo` on macOS and `scoop install sdo` from the bucket on Windows, each checking that `sdo --version` prints the version.
+
+One-time setup, by an org owner:
+
+1. Create a GitHub App owned by the `scrape-do` organisation with no webhook and one repository permission, **Contents: Read and write** (Metadata: Read-only comes with it), and install it on `homebrew-tap` and `scoop-bucket` only.
+2. Add two organisation secrets, available to `sdo-cli` and `sdo-mcp`: `TAP_APP_ID` (the App's ID) and `TAP_APP_PRIVATE_KEY` (a private key generated for it, the whole PEM).
+
+The job mints an installation token for those two repositories, limited to `contents: write`, which is revoked when the job ends.
+
 ## Test-driven development
 
 We are **TDD-first**. Write the failing test before the implementation, then make it pass, then refactor. Concretely, for any behavioral change:

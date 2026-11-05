@@ -7,6 +7,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/) · [SemVer](https://semv
 
 ### Added
 
+- Homebrew and Scoop: `brew install scrape-do/tap/sdo` (macOS and Linux) and
+  `scoop bucket add scrape-do https://github.com/scrape-do/scoop-bucket` then
+  `scoop install sdo` (Windows). Each final release updates the formula and
+  the manifest, with the hashes from the release's signed `checksums.txt`;
+  release candidates stay on GitHub only.
 - `sdo version --check` asks GitHub, once and anonymously, whether a newer
   release exists, and prints the upgrade commands (`brew upgrade sdo`,
   `scoop update sdo`, `go install ...@latest`) and the release page when one

@@ -7,7 +7,28 @@ No telemetry, no automatic update check, no UI.
 
 ## Install
 
-Download a prebuilt archive from the GitHub Releases page. For version X.Y.Z
+With [Homebrew](https://brew.sh) (macOS and Linux), from the
+[scrape-do/homebrew-tap](https://github.com/scrape-do/homebrew-tap) tap:
+
+```bash
+brew install scrape-do/tap/sdo
+brew upgrade sdo                 # later, for a new release
+```
+
+With [Scoop](https://scoop.sh) (Windows), from the
+[scrape-do/scoop-bucket](https://github.com/scrape-do/scoop-bucket) bucket:
+
+```powershell
+scoop bucket add scrape-do https://github.com/scrape-do/scoop-bucket
+scoop install sdo
+scoop update sdo                 # later, for a new release
+```
+
+Both carry final releases only (no release candidates) and install the same
+archives as the GitHub Releases page, checked against the release's signed
+`checksums.txt` (see [SECURITY.md](SECURITY.md#supply-chain-integrity)).
+
+Or download a prebuilt archive from the GitHub Releases page. For version X.Y.Z
 they are named
 
 - `sdo_X.Y.Z_linux_amd64.tar.gz`, `sdo_X.Y.Z_linux_arm64.tar.gz`
@@ -20,7 +41,7 @@ license texts of everything linked into the binary). Each release also carries
 an SPDX SBOM per archive (`<archive>.sbom.json`), `checksums.txt` and a cosign
 signature for it; see [SECURITY.md](SECURITY.md) for how to verify a download.
 
-With a Go toolchain (1.26+), once `sdo-cli` and `sdo-go` are published:
+With a Go toolchain (1.26+):
 
 ```bash
 go install github.com/scrape-do/sdo-cli/cmd/sdo@latest   # installs a binary named sdo
@@ -47,16 +68,16 @@ are still printed and it exits `1` with the reason on stderr.
 
 ### Build from source
 
-Clone `sdo-go` next to this repository and build through a Go workspace (the
-full setup, and why, is in [CONTRIBUTING.md](CONTRIBUTING.md#development-setup)):
+`go.mod` pins a released `sdo-go`, which Go fetches from the module proxy:
 
 ```bash
-git clone https://github.com/scrape-do/sdo-go.git
 git clone https://github.com/scrape-do/sdo-cli.git
-go work init ./sdo-cli ./sdo-go
-go work edit -replace "github.com/scrape-do/sdo-go@v0.1.0=./sdo-go"
 cd sdo-cli && go build -o sdo ./cmd/sdo
 ```
+
+A Go workspace with a local `sdo-go` checkout is needed only to develop
+against an unreleased SDK; [CONTRIBUTING.md](CONTRIBUTING.md#development-setup)
+covers it.
 
 ## Usage
 
@@ -307,7 +328,7 @@ use `--output-file`, or pass `--raw` to print it anyway.
 |----------|---------|--------------|
 | `ci.yml` | every push to `main` and every pull request | `go vet` and the race-enabled tests of the CLI and the MCP server on Go 1.26 and 1.27 (Linux), plus macOS and Windows on 1.27; a `quality` job for `gofmt` and the 99% statement-coverage floor; a check that `go install` produces a binary named `sdo`; the command, flag and MCP-tool snapshot (`api-surface.txt`) must be up to date; CodeQL code scanning. Everything runs on GitHub-hosted runners; CodeQL runs on the org's self-hosted runners for same-repository events (its upload is a GitHub API call the org's IP allow list only accepts from there); a pull request from a fork is analysed once merged. |
 | `security.yml` | push to `main`, pull requests, and weekly | secret scanning over the full git history (gitleaks), OSV-Scanner, `govulncheck`, and an SBOM uploaded as a build artifact. OpenSSF Scorecard runs on pushes to `main` and weekly, with results in code scanning. |
-| `release.yml` | a version tag only | Four jobs. **build** (read-only) checks the tag against the CLI version, tests, and builds the archives, checksums, SBOMs and third-party license notices with GoReleaser. **smoke** unpacks every archive on a GitHub-hosted runner of its platform (Linux and Windows on amd64 and arm64, macOS on arm64 and under Rosetta) and runs the binary. **publish** runs only after approval in the `prerelease` or `release` environment and only for a tag on `main`: it verifies the checksums and signs `checksums.txt` with cosign (keyless); a last job on the org's self-hosted runners (the only ones the org's IP allow list lets call the GitHub API) creates the GitHub release — a **pre-release** for `vX.Y.Z-rc.N`, a normal release for `vX.Y.Z`. |
+| `release.yml` | a version tag only | Six jobs. **build** (read-only) checks the tag against the CLI version, tests, and builds the archives, checksums, SBOMs and third-party license notices with GoReleaser. **smoke** unpacks every archive on a GitHub-hosted runner of its platform (Linux and Windows on amd64 and arm64, macOS on arm64 and under Rosetta) and runs the binary. **publish** runs only after approval in the `prerelease` or `release` environment and only for a tag on `main`: it verifies the checksums and signs `checksums.txt` with cosign (keyless); a last job on the org's self-hosted runners (the only ones the org's IP allow list lets call the GitHub API) creates the GitHub release — a **pre-release** for `vX.Y.Z-rc.N`, a normal release for `vX.Y.Z`. The build job also generates the Homebrew formula and Scoop manifest for the version from `checksums.txt` (`tools/pkgmanifests`), which smoke lints on macOS and parses on Windows. For a final release only, **package-managers** (self-hosted, no repository code) checks both files against the signed `checksums.txt` and commits them to `scrape-do/homebrew-tap` and `scrape-do/scoop-bucket` through GitHub's API with a GitHub App token limited to those two repositories, and **verify-install** then installs the release with `brew` on macOS and `scoop` on Windows, as a user would. |
 | Dependabot | weekly | update pull requests for Go modules and the GitHub Actions, taken only after a 7-day cooldown; each one runs the checks above. |
 
 `go.mod` pins the `sdo-go` SDK to a released version and `go.sum` verifies it: CI and the release build fetch exactly that version from the Go module proxy.
