@@ -1,0 +1,33 @@
+{
+  "version": "0.2.0",
+  "description": "Scrape.do command-line client, with a bundled MCP server",
+  "homepage": "https://scrape.do",
+  "license": "Apache-2.0",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/scrape-do/sdo-cli/releases/download/v0.2.0/sdo_0.2.0_windows_amd64.zip",
+      "hash": "d76787a212c53347fbc022e1669e153e51d8c51720f5bd01b1512154a4ed7831"
+    },
+    "arm64": {
+      "url": "https://github.com/scrape-do/sdo-cli/releases/download/v0.2.0/sdo_0.2.0_windows_arm64.zip",
+      "hash": "35c0a68d86bc3ee8325a062050a41113e3a5b14b0f86c3c8e075ee8cbe698944"
+    }
+  },
+  "bin": "sdo.exe",
+  "checkver": {
+    "github": "https://github.com/scrape-do/sdo-cli"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/scrape-do/sdo-cli/releases/download/v$version/sdo_$version_windows_amd64.zip"
+      },
+      "arm64": {
+        "url": "https://github.com/scrape-do/sdo-cli/releases/download/v$version/sdo_$version_windows_arm64.zip"
+      }
+    },
+    "hash": {
+      "url": "https://github.com/scrape-do/sdo-cli/releases/download/v$version/checksums.txt"
+    }
+  }
+}
