@@ -18,7 +18,7 @@ We require a **DCO sign-off**, not a CLA. You retain copyright over your contrib
 
 Two hard constraints shape what we accept:
 
-- **No telemetry.** The `sdo` binary must not phone home, collect usage analytics, or emit any data to Scrape.do or third parties beyond the API calls a user explicitly invokes. Pull requests that add tracking, "anonymous" metrics, crash reporters, or update-check beacons will be rejected.
+- **No telemetry.** The `sdo` binary must not phone home, collect usage analytics, or emit any data to Scrape.do or third parties beyond the API calls a user explicitly invokes. Pull requests that add tracking, "anonymous" metrics, crash reporters, or update-check beacons will be rejected. The one allowed exception is `sdo version --check`: a single anonymous request to the GitHub releases API, made only when the user runs that command. Any automatic check (at startup, in the background, periodically, or enabled by a setting or environment variable) is forbidden, and so is sending a credential or anything identifying beyond the `User-Agent` with that request.
 - **No UI.** `sdo` is CLI-only and ships alongside the language SDKs and MCP. Do not add a web dashboard, a TUI app, a browser launcher, or any graphical surface. Output is text (and structured formats like JSON) on stdout/stderr.
 
 ## Authentication model

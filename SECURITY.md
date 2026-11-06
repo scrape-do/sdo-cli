@@ -67,7 +67,9 @@ Only connect the bundled MCP server to MCP hosts you trust, and scope the token 
 
 ## Privacy and Telemetry
 
-**`sdo` collects no telemetry and has no update check.** There is no analytics, no usage reporting, no crash phone-home, and no background network activity. The only outbound traffic is the API requests you explicitly make to Scrape.do, identified by the `User-Agent` header `sdo-cli/<version>` and nothing else (no OS, no runtime version). This holds for both the CLI and the bundled MCP server.
+**`sdo` collects no telemetry and never checks for updates on its own.** There is no analytics, no usage reporting, no crash phone-home, and no background network activity. The only outbound traffic is the API requests you explicitly make to Scrape.do, identified by the `User-Agent` header `sdo-cli/<version>` and nothing else (no OS, no runtime version), plus the one exception below. This holds for both the CLI and the bundled MCP server.
+
+The one exception is `sdo version --check`, and only when you run it: it sends a single anonymous `GET https://api.github.com/repos/scrape-do/sdo-cli/releases/latest` carrying no token or credential of any kind (the Scrape.do token is not even read) and nothing identifying beyond the same `User-Agent` header. It does not follow redirects, gives up after 5 seconds, reads at most 64 KiB, and prints only a release tag that matches `vMAJOR.MINOR.PATCH`, never other text from the response. No automatic, startup, periodic or background check exists, and no setting or environment variable enables one.
 
 ## Supply-Chain Integrity
 

@@ -3,6 +3,16 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/) · [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `sdo version --check` asks GitHub, once and anonymously, whether a newer
+  release exists, and prints the upgrade commands (`brew upgrade sdo`,
+  `scoop update sdo`, `go install ...@latest`) and the release page when one
+  does. It exits 1 only when the check itself fails, never because a newer
+  release exists. Nothing checks for updates without this flag.
+
 ## [0.2.0] - 2026-11-03
 
 ### Added
