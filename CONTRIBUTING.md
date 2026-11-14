@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Contributing to sdo-cli
 
 Thanks for your interest in improving `sdo` — the official Scrape.do command-line tool. `sdo-cli` builds the `sdo` binary (a [Cobra](https://github.com/spf13/cobra) application) and bundles the Model Context Protocol server exposed via `sdo mcp serve`.

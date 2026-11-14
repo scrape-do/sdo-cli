@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Security Policy
 
 `sdo-cli` ships the `sdo` binary, the official command-line interface for Scrape.do. It also bundles a Model Context Protocol (MCP) server, started with `sdo mcp serve`, that exposes Scrape.do operations as tools to MCP-capable hosts. This document describes how to report vulnerabilities and the security properties you can rely on.

@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Migrating
 
 This document records breaking changes between releases of `sdo-cli` — the
