@@ -83,6 +83,21 @@ go build -o sdo ./cmd/sdo
 
 The `sdo` artifact is git-ignored; do not commit it.
 
+## CI and release workflows
+
+| Workflow | Runs on | What it does |
+|----------|---------|--------------|
+| `ci.yml` | every push to `main` and every pull request | `go vet` and the race-enabled tests of the CLI and the MCP server on Go 1.26 and 1.27 (Linux), plus macOS and Windows on 1.27; a `quality` job for `gofmt`, the 99% statement-coverage floor and actionlint; a check that `go install` produces a binary named `sdo`; the command, flag and MCP-tool snapshot (`api-surface.txt`) must be up to date; on a pull request, the `commits` job checks every commit's subject and sign-off; CodeQL code scanning. |
+| `security.yml` | push to `main`, pull requests, and weekly | secret scanning over the full git history (gitleaks), OSV-Scanner, `govulncheck`, and an SBOM uploaded as a build artifact. OpenSSF Scorecard runs on pushes to `main` and weekly, with results in code scanning. |
+| `release.yml` | a version tag only | Six jobs. **build** (read-only) checks the tag against the CLI version, tests, builds the archives, checksums, SBOMs and third-party license notices with GoReleaser, and takes the release notes from the version's CHANGELOG.md section. **smoke** unpacks every archive on a GitHub-hosted runner of its platform (Linux and Windows on amd64 and arm64, macOS on arm64 and under Rosetta) and runs the binary. **publish** runs only after approval in the `prerelease` or `release` environment and only for a tag on `main`: it verifies the checksums and signs `checksums.txt` with cosign (keyless); **github-release** then creates the GitHub release — a **pre-release** for `vX.Y.Z-rc.N`, a normal release for `vX.Y.Z`. The build job also generates the Homebrew formula and Scoop manifest for the version from `checksums.txt` (`tools/pkgmanifests`), which smoke lints on macOS and parses on Windows. For a final release only, **package-managers** checks both files against the signed `checksums.txt` and commits them to `scrape-do/homebrew-tap` and `scrape-do/scoop-bucket` through GitHub's API with a GitHub App token limited to those two repositories, and **verify-install** then installs the release with `brew` on macOS and `scoop` on Windows, as a user would. |
+| Dependabot | weekly | update pull requests for Go modules and the GitHub Actions, taken only after a 7-day cooldown; each one runs the checks above. |
+
+Every job runs on GitHub-hosted runners except four, which run on the org's self-hosted runners because they call the GitHub API and the org's IP allow list accepts those calls only from there: CodeQL (for same-repository events; a pull request from a fork is analysed once merged), Scorecard (pushes to `main` and the weekly run), and the release's **github-release** and **package-managers** jobs, which check out and run no repository code. Code from a fork's pull request never reaches the self-hosted runners.
+
+`go.mod` pins the `sdo-go` SDK to a released version and `go.sum` verifies it: CI and the release build fetch exactly that version from the Go module proxy.
+
+Every action is pinned to a full commit SHA and every job declares least-privilege `permissions:`. Publishing never happens outside the `scrape-do` organisation, never from a commit that is not on `main`, and never without a maintainer's approval.
+
 ## Releasing
 
 A release of the CLI that needs a new SDK goes in this order:
