@@ -36,7 +36,7 @@ func newJobsCreateCmd(a *app) *cobra.Command {
 		Use:     "create <url> [url...]",
 		Short:   "Submit an async job for one or more target URLs",
 		Args:    cobra.MinimumNArgs(1),
-		Example: `  sdo jobs create https://a.com https://b.com --option Super=true --option GeoCode=us`,
+		Example: `  sdo jobs create https://example.com https://example.org --option Super=true --option GeoCode=us`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			raw, _ := cmd.Flags().GetStringArray("option")
 			options, err := parseOptions(raw)

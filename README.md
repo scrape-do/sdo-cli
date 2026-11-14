@@ -94,7 +94,7 @@ sdo scrape https://example.com --render --wait-selector '#results'
 sdo scrape https://example.com --output markdown --output-file page.md
 
 # Send a POST with a JSON body and a custom header to the target:
-sdo scrape https://httpbin.org/post --data-json '{"q":"laptop"}' -H 'X-Trace: 1' --custom-headers
+sdo scrape https://example.com/search --data-json '{"q":"laptop"}' -H 'X-Trace: 1' --custom-headers
 
 # A gateway parameter without a flag of its own:
 sdo scrape https://example.com --param someNewParam=value
@@ -205,7 +205,7 @@ print to stdout as JSON; a one-line summary prints to stderr.
 
 ```bash
 # Submit a job for one or more URLs (Super=true becomes a bool; GeoCode=us stays a string):
-sdo jobs create https://a.com https://b.com --option Super=true --option GeoCode=us
+sdo jobs create https://example.com https://example.org --option Super=true --option GeoCode=us
 
 # A plugin job: one task per params entry (at most 1000), with the plugin's own
 # parameter names; give the array inline, from a file, or from stdin (-):
