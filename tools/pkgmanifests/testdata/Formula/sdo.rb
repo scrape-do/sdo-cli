@@ -32,6 +32,7 @@ class Sdo < Formula
 
   def install
     bin.install "sdo"
+    generate_completions_from_executable(bin/"sdo", "completion")
   end
 
   test do

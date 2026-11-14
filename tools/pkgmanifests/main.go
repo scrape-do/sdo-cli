@@ -186,7 +186,8 @@ func (r release) SHA256(goos, goarch string) string {
 
 // The formula, laid out as `brew style` wants it. livecheck follows GitHub's
 // "latest release", which is never a release candidate: Homebrew users get
-// finals only.
+// finals only. The bash, zsh and fish completions come from the installed
+// binary (`sdo completion <shell>`), as Homebrew's own Cobra formulae do it.
 var formulaTemplate = template.Must(template.New("formula").Parse(`class ` + class + ` < Formula
   desc "` + description + `"
   homepage "` + homepage + `"
@@ -210,6 +211,7 @@ var formulaTemplate = template.Must(template.New("formula").Parse(`class ` + cla
 {{end}}
   def install
     bin.install "` + project + `"
+    generate_completions_from_executable(bin/"` + project + `", "completion")
   end
 
   test do
