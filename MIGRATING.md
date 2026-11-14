@@ -6,10 +6,10 @@ This document records breaking changes between releases of `sdo-cli` — the
 Each entry explains what changed, why, and the exact steps to update your
 scripts, pipelines, and shell integrations.
 
-`sdo-cli` follows [Semantic Versioning](https://semver.org/). Until `1.0.0`,
-the minor version (`0.X.0`) carries breaking changes; patch releases
-(`0.x.Y`) are backward compatible. After `1.0.0`, breaking changes are
-confined to major versions.
+`sdo-cli` follows [Semantic Versioning](https://semver.org/). Before 1.0, a
+minor version may contain breaking changes; each is marked **Breaking** in
+[CHANGELOG.md](CHANGELOG.md) and described here. Patch versions never break.
+After `1.0.0`, breaking changes are confined to major versions.
 
 ## What counts as a breaking change
 
@@ -68,6 +68,23 @@ Apache-2.0.
 
 ## Releases
 
-No version has been released yet, so there is nothing to migrate from. The
-first release's behaviour is described in [CHANGELOG.md](CHANGELOG.md); from
-then on, every breaking change gets an entry here.
+Each release that requires action from you has a section, newest first. Read
+every section between your current version and your target version.
+
+### 0.1.x → 0.2.0
+
+- **Breaking: `sdo jobs list` prints a page object.** It used to print a bare
+  JSON array of jobs, which held only the first 10 jobs because the endpoint
+  is paginated. It now prints one page as an object with `Jobs`,
+  `TotalCount`, `PageSize`, `PageNumber` and `TotalPages`, and stderr shows
+  `page N of M`. Read `.Jobs` for the array; to see more, pass `--page` (and
+  `--page-size`, 1–100) and walk pages up to `TotalPages`.
+
+  ```bash
+  # 0.1.x
+  sdo jobs list | jq '.[].JobID'
+
+  # 0.2.0
+  sdo jobs list | jq '.Jobs[].JobID'
+  sdo jobs list --page 2 --page-size 50 | jq '.Jobs[].JobID'
+  ```
