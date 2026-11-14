@@ -3,7 +3,8 @@
 #   build   — read-only: tests, builds the archives, checksums and SBOMs with
 #             GoReleaser, and uploads them as a workflow artifact; generates
 #             the Homebrew formula and Scoop manifest for this version from
-#             checksums.txt (tools/pkgmanifests) as a second artifact.
+#             checksums.txt (tools/pkgmanifests) as a second artifact, and the
+#             release notes (this version's CHANGELOG.md section) as a third.
 #   smoke   — unpacks the archive for each supported platform on a runner of
 #             that platform and runs the binary, so every published file is
 #             known to start where it is meant to run; lints the formula on
@@ -11,7 +12,8 @@
 #   publish — gated by the `release` environment (required reviewers) and only
 #             for tags on commits contained in main: signs checksums.txt with
 #             cosign (keyless). Nothing is rebuilt after approval.
-#   github-release — creates the GitHub Release from the signed files. It runs
+#   github-release — creates the GitHub Release from the signed files and
+#             the release notes the build job took from CHANGELOG.md. It runs
 #             on the org's self-hosted runners: the org's IP allow list rejects
 #             GitHub API calls from GitHub-hosted runners. It checks out and
 #             runs no repository code.
@@ -104,6 +106,31 @@ jobs:
         with:
           name: pkgmanifests
           path: dist/pkgmanifests/
+          if-no-files-found: error
+          retention-days: 7
+      # The release notes are this version's CHANGELOG.md section, taken here
+      # because github-release has no checkout. A final release without a
+      # section fails now, before anyone is asked to approve it; a release
+      # candidate has no section of its own and gets a fixed note.
+      - name: Take the release notes from CHANGELOG.md
+        env:
+          CHANNEL: ${{ steps.channel.outputs.channel }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/release-notes"
+          notes="$RUNNER_TEMP/release-notes/notes.md"
+          if [ "$CHANNEL" = test ]; then
+            echo "Release candidate; see CHANGELOG.md [Unreleased]." > "$notes"
+            exit 0
+          fi
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '/^## \[/{p = ($2 == "[" v "]")} p' CHANGELOG.md | sed '1d' > "$notes"
+          [ -s "$notes" ] || { echo "::error::CHANGELOG.md has no section for $version" >&2; exit 1; }
+          printf '\nFull changelog: https://github.com/%s/blob/%s/CHANGELOG.md\n' "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" >> "$notes"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-notes
+          path: ${{ runner.temp }}/release-notes/notes.md
           if-no-files-found: error
           retention-days: 7
 
@@ -233,11 +260,13 @@ jobs:
       # directory (CodeQL writes its PR diff range there); reclaim both.
       - name: Reclaim the workspace
         working-directory: ${{ github.workspace }}
-        run: docker run --rm -v "$PWD:/w" -v "$RUNNER_TEMP:/t" golang:1.27 chown -R "$(id -u):$(id -g)" /w /t
+        run: docker run --rm -v "$PWD:/w" -v "$RUNNER_TEMP:/t" busybox:1.37.0@sha256:66a6306db78bf2dbf3487f293aa8d6990d8e506fdffab9cc43fe422becf886e4 chown -R "$(id -u):$(id -g)" /w /t
       # A persistent runner keeps the workspace between runs: without this,
       # the previous release's files are still in dist/ and get uploaded too.
+      # The same for the notes, in case the runner could not empty its temp
+      # directory.
       - name: Start from an empty dist/
-        run: rm -rf dist
+        run: rm -rf dist "$RUNNER_TEMP/release-notes"
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: dist-signed
@@ -248,6 +277,8 @@ jobs:
           set -euo pipefail
           cd dist
           expected=$( (awk '{print $2}' checksums.txt; echo checksums.txt; echo checksums.txt.cosign.bundle) | sort)
+          # GoReleaser's file names are plain; a name ls would mangle fails the comparison anyway.
+          # shellcheck disable=SC2012
           actual=$(ls -1 | sort)
           if [ "$expected" != "$actual" ]; then
             echo "::error::dist/ differs from checksums.txt:" >&2
@@ -267,6 +298,10 @@ jobs:
           echo "${GH_SHA256}  $RUNNER_TEMP/gh.tar.gz" | sha256sum -c -
           tar -xzf "$RUNNER_TEMP/gh.tar.gz" -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/gh_${GH_VERSION}_linux_amd64/bin" >> "$GITHUB_PATH"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-notes
+          path: ${{ runner.temp }}/release-notes
       - name: Create the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -275,7 +310,7 @@ jobs:
           prerelease=()
           if [ "$CHANNEL" = test ]; then prerelease=(--prerelease); fi
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag "${prerelease[@]}" \
-            --title "$GITHUB_REF_NAME" --notes "See CHANGELOG.md for the changes in this release." \
+            --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes/notes.md" \
             dist/*
 
   # Final releases go to the Homebrew tap and the Scoop bucket; release
@@ -293,7 +328,7 @@ jobs:
     steps:
       - name: Reclaim the workspace
         working-directory: ${{ github.workspace }}
-        run: docker run --rm -v "$PWD:/w" -v "$RUNNER_TEMP:/t" golang:1.27 chown -R "$(id -u):$(id -g)" /w /t
+        run: docker run --rm -v "$PWD:/w" -v "$RUNNER_TEMP:/t" busybox:1.37.0@sha256:66a6306db78bf2dbf3487f293aa8d6990d8e506fdffab9cc43fe422becf886e4 chown -R "$(id -u):$(id -g)" /w /t
       - name: Start from empty directories
         run: rm -rf dist pkgmanifests
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -340,7 +375,7 @@ jobs:
           awk '$1 == "url" { gsub(/"/, "", $2); u = $2 } $1 == "sha256" { gsub(/"/, "", $2); print u, $2; u = "" }' "$formula" | check_pairs 4
           # The manifest: an architecture's "url" is followed by its "hash".
           awk -F'"' '$2 == "url" { u = $4 } $2 == "hash" && NF > 4 { print u, $4; u = "" }' "$manifest" | check_pairs 2
-          grep -qxF "  \"version\": \"$version\"," "$manifest" || fail "the manifest's version is not $version"
+          grep -qxF "    \"version\": \"$version\"," "$manifest" || fail "the manifest's version is not $version"
           [ "$(grep -c '"version"' "$manifest")" -eq 1 ] || fail "the manifest has more than one version"
           echo "formula and manifest match checksums.txt of $GITHUB_REF_NAME"
       # The self-hosted runners do not ship the GitHub CLI: install a pinned,
@@ -380,6 +415,8 @@ jobs:
             want=$({ printf 'blob %d\0' "$(stat -c %s "$file")"; cat "$file"; } | sha1sum | cut -d' ' -f1)
             for attempt in 1 2 3; do
               [ "$attempt" -eq 1 ] || sleep $((attempt * 5))
+              # $owner, $name and $expr are GraphQL variables, not shell ones.
+              # shellcheck disable=SC2016
               if ! state=$(gh api graphql -f owner=scrape-do -f name="$repo" -f expr="main:$path" \
                 -f query='query($owner: String!, $name: String!, $expr: String!) {
                   repository(owner: $owner, name: $name) {
@@ -395,7 +432,9 @@ jobs:
                 echo "::notice::scrape-do/$repo: $path is already $PROJECT $version"
                 return 0
               fi
-              # Only fixed names, the version and base64 go into the JSON.
+              # Only fixed names, the version and base64 go into the JSON. $input
+              # is a GraphQL variable.
+              # shellcheck disable=SC2016
               printf '{"query":"%s","variables":{"input":{"branch":{"repositoryNameWithOwner":"scrape-do/%s","branchName":"main"},"message":{"headline":"%s %s"},"expectedHeadOid":"%s","fileChanges":{"additions":[{"path":"%s","contents":"%s"}]}}}}' \
                 'mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { url } } }' \
                 "$repo" "$PROJECT" "$version" "$head" "$path" "$(base64 -w0 "$file")" >"$RUNNER_TEMP/commit.json"

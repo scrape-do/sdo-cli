@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/scrape-do/sdo-cli/internal/version"
 )
 
 // failingGateway answers every request with a gateway error envelope, for both
@@ -150,6 +152,18 @@ func TestMCPServeCommand(t *testing.T) {
 	t.Setenv("SDO_TOKEN", "")
 	if _, _, err := execute(t, "mcp", "serve"); err == nil || !strings.Contains(err.Error(), "no API token") {
 		t.Errorf("mcp serve without a token: %v", err)
+	}
+}
+
+// The bundled server names itself after the binary that serves it, with the
+// CLI's version: a client's logs show `sdo`, not the standalone sdo-mcp.
+func TestMCPServeIdentifiesAsSdo(t *testing.T) {
+	t.Setenv("SDO_TOKEN", "t")
+	out, _, code := runCLI(t, `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}`+"\n",
+		"mcp", "serve")
+	want := `"serverInfo":{"name":"sdo","version":"` + version.CLI + `"}`
+	if code != 0 || !strings.Contains(out, want) {
+		t.Errorf("initialize reply = %q (exit %d), want it to contain %s", out, code, want)
 	}
 }
 

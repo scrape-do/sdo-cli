@@ -12,9 +12,10 @@ import (
 	"strings"
 )
 
-// options maps the SDK's client options to the CLI's global flags and the
-// environment variables they fall back to. These names reach both the CLI and
-// the MCP server, which is started by the same binary with the same flags.
+// options maps the SDK's client options to the flags and environment variables
+// that set them where the CLI or the server is started. sdo (whose global flags
+// also apply to `sdo mcp serve`) and sdo-mcp serve take the same names, which are
+// what the user and the model can act on.
 var options = strings.NewReplacer(
 	"WithMaxResponseBytes", "--max-response-bytes",
 	"WithAllowInsecureHTTP", "--insecure-http",

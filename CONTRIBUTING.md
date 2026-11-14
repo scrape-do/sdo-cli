@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Contributing to sdo-cli
 
 Thanks for your interest in improving `sdo` — the official Scrape.do command-line tool. `sdo-cli` builds the `sdo` binary (a [Cobra](https://github.com/spf13/cobra) application) and bundles the Model Context Protocol server exposed via `sdo mcp serve`.
@@ -34,7 +35,7 @@ Never commit a real token. Tests use a stub token against an `httptest` server; 
 
 ## Prerequisites
 
-- **Go 1.26 or newer** (`go version` to check; `go.mod` declares `go 1.26.9`; CI also runs the current release, and releases are built with it).
+- **Go 1.26.9 or newer** (`go version` to check; `go.mod` declares `go 1.26.9`; CI also runs the current release, and releases are built with it).
 - `git` with your `user.name` and `user.email` configured (required for sign-off).
 - Nothing else: `go.mod` pins the [`sdo-go`](https://github.com/scrape-do/sdo-go) SDK to a released version, which `go` fetches from the module proxy. A local SDK checkout is only needed to work against unreleased SDK changes (below).
 
@@ -72,6 +73,10 @@ go run ./tools/apisurface > api-surface.txt && git diff --exit-code api-surface.
 
 `api-surface.txt` is the CLI's compatibility surface — every command, argument and flag, and every MCP tool parameter, one per line. Regenerate and commit it whenever you change any of them; CI fails on drift.
 
+### The MCP server is shared with sdo-mcp
+
+`internal/mcp` (the server behind `sdo mcp serve`) and `internal/explain` are mirrored in [sdo-mcp](https://github.com/scrape-do/sdo-mcp), the standalone server. Every file in them except `internal/mcp/branding.go` must stay identical in both repositories apart from the module path, so make a change to either package in both. sdo-mcp's `mcp-copy-drift` CI job diffs the two copies: it warns on a pull request and fails on `main` and in its weekly run.
+
 ### Build the binary
 
 ```bash
@@ -81,6 +86,21 @@ go build -o sdo ./cmd/sdo
 ```
 
 The `sdo` artifact is git-ignored; do not commit it.
+
+## CI and release workflows
+
+| Workflow | Runs on | What it does |
+|----------|---------|--------------|
+| `ci.yml` | every push to `main` and every pull request | `go vet` and the race-enabled tests of the CLI and the MCP server on Go 1.26 and 1.27 (Linux), plus macOS and Windows on 1.27; a `quality` job for `gofmt`, the 99% statement-coverage floor and actionlint; a check that `go install` produces a binary named `sdo`; the command, flag and MCP-tool snapshot (`api-surface.txt`) must be up to date; on a pull request, the `commits` job checks every commit's subject and sign-off; CodeQL code scanning. |
+| `security.yml` | push to `main`, pull requests, and weekly | secret scanning over the full git history (gitleaks), OSV-Scanner, `govulncheck`, and an SBOM uploaded as a build artifact. OpenSSF Scorecard runs on pushes to `main` and weekly, with results in code scanning. |
+| `release.yml` | a version tag only | Six jobs. **build** (read-only) checks the tag against the CLI version, tests, builds the archives, checksums, SBOMs and third-party license notices with GoReleaser, and takes the release notes from the version's CHANGELOG.md section. **smoke** unpacks every archive on a GitHub-hosted runner of its platform (Linux and Windows on amd64 and arm64, macOS on arm64 and under Rosetta) and runs the binary. **publish** runs only after approval in the `prerelease` or `release` environment and only for a tag on `main`: it verifies the checksums and signs `checksums.txt` with cosign (keyless); **github-release** then creates the GitHub release — a **pre-release** for `vX.Y.Z-rc.N`, a normal release for `vX.Y.Z`. The build job also generates the Homebrew formula and Scoop manifest for the version from `checksums.txt` (`tools/pkgmanifests`), which smoke lints on macOS and parses on Windows. For a final release only, **package-managers** checks both files against the signed `checksums.txt` and commits them to `scrape-do/homebrew-tap` and `scrape-do/scoop-bucket` through GitHub's API with a GitHub App token limited to those two repositories, and **verify-install** then installs the release with `brew` on macOS and `scoop` on Windows, as a user would. |
+| Dependabot | weekly | update pull requests for Go modules and the GitHub Actions, taken only after a 7-day cooldown; each one runs the checks above. |
+
+Every job runs on GitHub-hosted runners except four, which run on the org's self-hosted runners because they call the GitHub API and the org's IP allow list accepts those calls only from there: CodeQL (for same-repository events; a pull request from a fork is analysed once merged), Scorecard (pushes to `main` and the weekly run), and the release's **github-release** and **package-managers** jobs, which check out and run no repository code. Code from a fork's pull request never reaches the self-hosted runners.
+
+`go.mod` pins the `sdo-go` SDK to a released version and `go.sum` verifies it: CI and the release build fetch exactly that version from the Go module proxy.
+
+Every action is pinned to a full commit SHA and every job declares least-privilege `permissions:`. Publishing never happens outside the `scrape-do` organisation, never from a commit that is not on `main`, and never without a maintainer's approval.
 
 ## Releasing
 
@@ -94,7 +114,7 @@ A release of the CLI that needs a new SDK goes in this order:
    go mod tidy
    ```
 
-3. Bump `CLI` in `internal/version/version.go`, move the `Unreleased` CHANGELOG entries under the new version, and merge to `main`.
+3. Bump `CLI` in `internal/version/version.go`, move the `Unreleased` CHANGELOG entries under the new version (that section becomes the GitHub Release's notes; the build fails without it), and merge to `main`.
 4. Tag that commit on `main` with `v<CLI version>`. The release workflow refuses a tag that does not match `internal/version`, builds against the pinned SDK version, tests, builds the archives and runs the binary from every archive on a runner of its platform, all in read-only jobs, and publishes (cosign-signed checksums, SBOMs) only after approval in the `release` environment and only when the tagged commit is on `main`.
 
 GoReleaser generates `THIRD_PARTY_LICENSES.txt` before the build (`go run ./tools/thirdparty`: the license and notice files of the Go runtime and of every module linked into the binary for any release target, read from the module cache) and ships it in every archive with `LICENSE`, `NOTICE`, `README.md` and `CHANGELOG.md`. A new dependency without a license file stops the release.
@@ -103,18 +123,20 @@ Development is trunk-based (pull requests into `main`), and the tag picks the
 channel: `vX.Y.Z-rc.N` becomes a GitHub **pre-release** after approval in the
 `prerelease` environment; `vX.Y.Z` a normal release after approval in `release`.
 
-The `release` and `prerelease` environments have required reviewers and a deployment rule limited to `v*` tags. Keep them: an environment that does not exist is created on first use with no protection.
-
 ### Homebrew and Scoop
 
-The build job also runs `go run ./tools/pkgmanifests -version X.Y.Z -checksums dist/checksums.txt -out dist/pkgmanifests`, which writes the Homebrew formula (`Formula/sdo.rb`) and the Scoop manifest (`bucket/sdo.json`) for the version from `checksums.txt` alone, and uploads them as the `pkgmanifests` artifact; the smoke job lints the formula (`brew style`, `ruby -c`) on macOS and parses the manifest on Windows. Its golden files in `tools/pkgmanifests/testdata/` are the real v0.2.0 files; after an intended change to the output, regenerate them with `go test ./tools/pkgmanifests -update` and review the diff.
+The build job also runs `go run ./tools/pkgmanifests -version X.Y.Z -checksums dist/checksums.txt -out dist/pkgmanifests`, which writes the Homebrew formula (`Formula/sdo.rb`, which also installs the bash, zsh and fish completions) and the Scoop manifest (`bucket/sdo.json`) for the version from `checksums.txt` alone, and uploads them as the `pkgmanifests` artifact; the smoke job lints the formula (`brew style`, `ruby -c`) on macOS and parses the manifest on Windows. Its golden files in `tools/pkgmanifests/testdata/` are generated from the real v0.2.0 `checksums.txt`; after an intended change to the output, regenerate them with `go test ./tools/pkgmanifests -update` and review the diff.
 
 For a final release (never a release candidate), two more jobs run after the GitHub Release exists:
 
 - **package-managers**, on the self-hosted runners: checks with plain bash that every URL in the two files is this release's and every hash is the one in the signed `checksums.txt`, then commits `Formula/sdo.rb` to `scrape-do/homebrew-tap` and `bucket/sdo.json` to `scrape-do/scoop-bucket` on `main` with GitHub's GraphQL `createCommitOnBranch` (GitHub signs the commit; the org's ruleset refuses unsigned ones), messages `sdo X.Y.Z`. A re-run that finds identical files skips with a notice.
-- **verify-install**, on GitHub-hosted runners, without a token: `brew install scrape-do/tap/sdo` on macOS and `scoop install sdo` from the bucket on Windows, each checking that `sdo --version` prints the version.
+- **verify-install**, on GitHub-hosted runners, without a token: `brew install scrape-do/tap/sdo` on macOS and `scoop install scrape-do/sdo` from the bucket on Windows, each checking that `sdo --version` prints the version.
 
-One-time setup, by an org owner:
+### Maintainers: release setup
+
+The `release` and `prerelease` environments have required reviewers and a deployment rule limited to `v*` tags. Keep them: an environment that does not exist is created on first use with no protection.
+
+One-time setup for **package-managers**, by an org owner:
 
 1. Create a GitHub App named `scrape-do-publisher`, owned by the `scrape-do` organisation, with no webhook and one repository permission, **Contents: Read and write** (Metadata: Read-only comes with it), and install it on `homebrew-tap` and `scoop-bucket` only. Its commits appear as `scrape-do-publisher[bot]`.
 2. Add two organisation secrets, available to `sdo-cli` and `sdo-mcp`: `PUBLISHER_APP_ID` (the App's ID) and `PUBLISHER_APP_PRIVATE_KEY` (a private key generated for it, the whole PEM).
@@ -135,8 +157,8 @@ A pull request that adds or changes behavior without an accompanying test will n
 
 The request and response behaviour the CLI relies on — parameter serialization, validation, decoding, errors, redaction — lives in `sdo-go`, which is tested against a cross-language **conformance corpus** shared by every Scrape.do SDK. The CLI does not re-implement any of it:
 
-- A change that needs different wire behaviour belongs in `sdo-go` (and its specification) first; the CLI then picks it up with a version bump.
-- Keep CLI behavior consistent with the Python (`sdo-sdk`), JS (`@scrape-do/sdk`), and Go (`sdo-go`) implementations. Divergence across languages is a bug.
+- The request parameters, defaults and observable behaviour are shared by all sdo SDKs and pinned by the conformance corpus (`conformance.json`), which Scrape.do maintains against https://scrape.do/documentation. Propose a change in an issue first; a change to a parameter lands in every SDK together, and the CLI then picks it up with an `sdo-go` version bump.
+- Keep CLI behaviour consistent with the Go ([sdo-go](https://github.com/scrape-do/sdo-go)), Python ([sdo-sdk-python](https://github.com/scrape-do/sdo-sdk-python)) and JavaScript ([sdo-sdk-js](https://github.com/scrape-do/sdo-sdk-js)) SDKs. Divergence across languages is a bug.
 
 ## Coding standards
 
@@ -197,7 +219,7 @@ This appends a trailer to your commit message:
 Signed-off-by: Your Name <you@example.com>
 ```
 
-The name and email must match your `git config user.name` and `user.email`. Commits without a valid sign-off cannot be merged. If you forgot to sign off, amend with:
+The name and email must match your `git config user.name` and `user.email`. Commits without a valid sign-off cannot be merged: CI checks every commit's subject and sign-off (`commits` job), and a pull request fails until they are fixed. If you forgot to sign off, amend with:
 
 ```bash
 git commit --amend -s --no-edit
@@ -218,10 +240,10 @@ Before opening a pull request, confirm:
 - [ ] `gofmt -l .` prints nothing and `go vet ./...` is clean.
 - [ ] New behavior has tests written test-first.
 - [ ] `go.mod` has no `replace` directive and no `go.work` is committed.
-- [ ] `api-surface.txt` is regenerated if a command, flag, argument or MCP tool changed.
+- [ ] If the public surface changed (a command, flag, argument or MCP tool), `api-surface.txt` was regenerated and the change is noted in CHANGELOG.md.
+- [ ] A change to `internal/mcp` or `internal/explain` is mirrored in sdo-mcp.
 - [ ] No telemetry, no UI, no second auth path was introduced.
 - [ ] Commits use Conventional Commits and are DCO signed off (`-s`).
-- [ ] If the public surface changed, the spec and conformance corpus were updated.
 
 ## Reporting bugs and proposing features
 

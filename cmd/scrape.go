@@ -128,7 +128,7 @@ func newScrapeCmd(a *app) *cobra.Command {
 		Args: cobra.ExactArgs(1),
 		Example: "  sdo scrape https://example.com --render --geo-code us\n" +
 			"  sdo scrape https://example.com --render --wait-selector '#results'\n" +
-			"  sdo scrape https://httpbin.org/post --data-json '{\"q\":\"laptop\"}' -H 'X-Trace: 1' --custom-headers",
+			"  sdo scrape https://example.com/search --data-json '{\"q\":\"laptop\"}' -H 'X-Trace: 1' --custom-headers",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config, err := buildScrapeConfig(cmd.Flags(), args[0])
 			if err != nil {
