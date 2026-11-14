@@ -12,6 +12,8 @@ Security fixes land on the latest released minor version. We recommend always ru
 | Latest minor release | Yes |
 | Older releases | No — please upgrade |
 
+Upgrade with `brew upgrade sdo`, `scoop update sdo` or `go install github.com/scrape-do/sdo-cli/cmd/sdo@latest`, or download the latest release; `sdo version --check` says whether a newer one exists.
+
 ## Reporting a Vulnerability
 
 **Do not open a public issue for security problems.**
@@ -22,6 +24,8 @@ Report privately through GitHub's [Security Advisories](https://github.com/scrap
 - The exact `sdo` version (`sdo version`), OS, and architecture.
 - Minimal steps or a proof of concept to reproduce.
 - Whether the issue is in the CLI itself, the bundled MCP server (`sdo mcp serve`), or token handling.
+
+PGP is available on request.
 
 ### What to Expect
 
@@ -100,7 +104,7 @@ The one exception is `sdo version --check`, and only when you run it: it sends a
   grep '_darwin_arm64.tar.gz$' checksums.txt           # your platform's line: the same hash
   ```
 
-- Sibling repositories under the same governance: `sdo-sdk-python` (PyPI `sdo-sdk`), `sdo-sdk-js` (npm `@scrape-do/sdk`), and `sdo-go` (`github.com/scrape-do/sdo-go`).
+- Sibling repositories under the same governance: [`sdo-go`](https://github.com/scrape-do/sdo-go) (the Go SDK this CLI is built on), [`sdo-mcp`](https://github.com/scrape-do/sdo-mcp) (the standalone MCP server), [`sdo-sdk-python`](https://github.com/scrape-do/sdo-sdk-python) and [`sdo-sdk-js`](https://github.com/scrape-do/sdo-sdk-js).
 
 ## Scope
 
@@ -112,7 +116,7 @@ In scope:
 
 Out of scope:
 
-- The Scrape.do API service itself — report those issues to **security@scrape.do**.
+- The Scrape.do API service itself — email **security@scrape.do** and say the issue is in the Scrape.do service itself rather than in this repository.
 - Vulnerabilities in third-party MCP hosts that connect to the bundled server.
 - Misconfiguration on the operator's machine, such as exporting `SDO_TOKEN` into an untrusted environment or passing `--insecure-http` to a non-local gateway.
 
