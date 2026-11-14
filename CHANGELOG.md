@@ -3,7 +3,7 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/) · [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [0.3.0] - 2026-11-15
 
 ### Added
 
