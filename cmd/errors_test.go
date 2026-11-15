@@ -187,7 +187,7 @@ func TestNetworkCommandReportsConfigFileProblem(t *testing.T) {
 }
 
 // The gateway's own 400 (a parameter it rejected; the CLI itself refuses
-// render=mert, so the gateway's exact render=mert reply stands in) fails with
+// render=maybe, so the gateway's exact render=maybe reply stands in) fails with
 // the gateway's message; a target's 400 the gateway billed, like a target 404
 // or 410, is a page: printed, with its status and cost, and exit 0. Plugins
 // follow the same rules, and a plugin's {"error","message"} envelope supplies
