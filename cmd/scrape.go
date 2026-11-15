@@ -52,7 +52,7 @@ var scrapeFlags = []scrapeFlag{
 	{"geo-code", "GeoCode", "geoCode", stringFlag, "country code to route from (e.g. us)"},
 	{"regional-geo-code", "RegionalGeoCode", "regionalGeoCode", stringFlag, "route from a random country of a region: " +
 		"europe|asia|africa|oceania|northamerica|southamerica (requires --super; cannot be combined with --geo-code)"},
-	{"zip-code", "ZipCode", "zipCode", stringFlag, "postal/ZIP code targeting (requires --super and --geo-code)"},
+	{"zip-code", "ZipCode", "zipcode", stringFlag, "postal/ZIP code targeting (requires --super and --geo-code)"},
 	{"session-id", "SessionID", "sessionId", stringFlag, "sticky proxy session: reuse the same IP across requests " +
 		"that pass the same id, an integer 0-1000000"},
 	{"set-cookies", "SetCookies", "setCookies", stringFlag, "cookies to send, unencoded: 'name=value; name2=value2'"},
