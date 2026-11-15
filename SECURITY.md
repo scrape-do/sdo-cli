@@ -18,7 +18,7 @@ Upgrade with `brew upgrade sdo`, `scoop update sdo` or `go install github.com/sc
 
 **Do not open a public issue for security problems.**
 
-Report privately through GitHub's [Security Advisories](https://github.com/scrape-do/sdo-cli/security/advisories/new) on this repository. If you cannot use that channel, email **security@scrape.do** with:
+Report privately through GitHub's [Security Advisories](https://github.com/scrape-do/sdo-cli/security/advisories/new) on this repository. If you cannot use that channel, email **support@scrape.do** with:
 
 - A description of the issue and its impact.
 - The exact `sdo` version (`sdo version`), OS, and architecture.
@@ -142,7 +142,7 @@ In scope:
 
 Out of scope:
 
-- The Scrape.do API service itself — email **security@scrape.do** and say the issue is in the Scrape.do service itself rather than in this repository.
+- The Scrape.do API service itself — email **support@scrape.do** and say the issue is in the Scrape.do service itself rather than in this repository.
 - Vulnerabilities in third-party MCP hosts that connect to the bundled server.
 - Misconfiguration on the operator's machine, such as exporting `SDO_TOKEN` into an untrusted environment or passing `--insecure-http` to a non-local gateway.
 
