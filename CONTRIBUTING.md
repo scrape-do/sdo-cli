@@ -115,7 +115,7 @@ A release of the CLI that needs a new SDK goes in this order:
    go mod tidy
    ```
 
-3. Bump `CLI` in `internal/version/version.go`, move the `Unreleased` CHANGELOG entries under the new version (that section becomes the GitHub Release's notes; the build fails without it), and merge to `main`.
+3. Bump `CLI` in `internal/version/version.go`, move the `Unreleased` CHANGELOG entries under the new version, leaving an empty `## [Unreleased]` above it and updating the link definitions (that section becomes the GitHub Release's notes; the build fails without it), and merge to `main`.
 4. Tag that commit on `main` with `v<CLI version>`. The release workflow refuses a tag that does not match `internal/version`, builds against the pinned SDK version, tests, builds the archives and runs the binary from every archive on a runner of its platform, all in read-only jobs, and publishes (cosign-signed checksums, SBOMs) only after approval in the `release` environment and only when the tagged commit is on `main`.
 
 GoReleaser generates `THIRD_PARTY_LICENSES.txt` before the build (`go run ./tools/thirdparty`: the license and notice files of the Go runtime and of every module linked into the binary for any release target, read from the module cache) and ships it in every archive with `LICENSE`, `NOTICE`, `README.md` and `CHANGELOG.md`. A new dependency without a license file stops the release.
