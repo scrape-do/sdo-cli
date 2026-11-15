@@ -91,7 +91,8 @@ The `sdo` artifact is git-ignored; do not commit it.
 
 | Workflow | Runs on | What it does |
 |----------|---------|--------------|
-| `ci.yml` | every push to `main` and every pull request | `go vet` and the race-enabled tests of the CLI and the MCP server on Go 1.26 and 1.27 (Linux), plus macOS and Windows on 1.27; a `quality` job for `gofmt`, the 99% statement-coverage floor and actionlint; a check that `go install` produces a binary named `sdo`; the command, flag and MCP-tool snapshot (`api-surface.txt`) must be up to date; on a pull request, the `commits` job checks every commit's subject and sign-off; CodeQL code scanning. |
+| `ci.yml` | every push to `main` and every pull request | `go vet` and the race-enabled tests of the CLI and the MCP server on Go 1.26 and 1.27 (Linux), plus macOS and Windows on 1.27; a `quality` job for `gofmt`, a test run under hostile `SDO_*` settings (the suite must not depend on the environment), the 99% statement-coverage floor and actionlint; a check that `go install` produces a binary named `sdo`; the command, flag and MCP-tool snapshot (`api-surface.txt`) must be up to date; CodeQL code scanning. |
+| `commits.yml` | every pull request: opened, updated, reopened, or its title or description edited | the `commits` job checks every commit's subject and sign-off and the pull request title, which becomes the squash commit's subject. A workflow of its own, so editing a pull request re-runs only this check. |
 | `security.yml` | push to `main`, pull requests, and weekly | secret scanning over the full git history (gitleaks), OSV-Scanner, `govulncheck`, and an SBOM uploaded as a build artifact. OpenSSF Scorecard runs on pushes to `main` and weekly, with results in code scanning. |
 | `release.yml` | a version tag only | Six jobs. **build** (read-only) checks the tag against the CLI version, tests, builds the archives, checksums, SBOMs and third-party license notices with GoReleaser, and takes the release notes from the version's CHANGELOG.md section. **smoke** unpacks every archive on a GitHub-hosted runner of its platform (Linux and Windows on amd64 and arm64, macOS on arm64 and under Rosetta) and runs the binary. **publish** runs only after approval in the `prerelease` or `release` environment and only for a tag on `main`: it verifies the checksums and signs `checksums.txt` with cosign (keyless); **github-release** then creates the GitHub release — a **pre-release** for `vX.Y.Z-rc.N`, a normal release for `vX.Y.Z`. The build job also generates the Homebrew formula and Scoop manifest for the version from `checksums.txt` (`tools/pkgmanifests`), which smoke lints on macOS and parses on Windows. For a final release only, **package-managers** checks both files against the signed `checksums.txt` and commits them to `scrape-do/homebrew-tap` and `scrape-do/scoop-bucket` through GitHub's API with a GitHub App token limited to those two repositories, and **verify-install** then installs the release with `brew` on macOS and `scoop` on Windows, as a user would. |
 | Dependabot | weekly | update pull requests for Go modules and the GitHub Actions, taken only after a 7-day cooldown; each one runs the checks above. |
@@ -157,7 +158,7 @@ A pull request that adds or changes behavior without an accompanying test will n
 
 The request and response behaviour the CLI relies on — parameter serialization, validation, decoding, errors, redaction — lives in `sdo-go`, which is tested against a cross-language **conformance corpus** shared by every Scrape.do SDK. The CLI does not re-implement any of it:
 
-- The request parameters, defaults and observable behaviour are shared by all sdo SDKs and pinned by the conformance corpus (`conformance.json`), which Scrape.do maintains against https://scrape.do/documentation. Propose a change in an issue first; a change to a parameter lands in every SDK together, and the CLI then picks it up with an `sdo-go` version bump.
+- The request parameters, defaults and observable behaviour are shared by all sdo SDKs and pinned by the conformance corpus ([`conformance.json`](https://github.com/scrape-do/sdo-go/blob/main/conformance.json)), which Scrape.do maintains against https://scrape.do/documentation. Propose a change in an issue first; a change to a parameter lands in every SDK together, and the CLI then picks it up with an `sdo-go` version bump.
 - Keep CLI behaviour consistent with the Go ([sdo-go](https://github.com/scrape-do/sdo-go)), Python ([sdo-sdk-python](https://github.com/scrape-do/sdo-sdk-python)) and JavaScript ([sdo-sdk-js](https://github.com/scrape-do/sdo-sdk-js)) SDKs. Divergence across languages is a bug.
 
 ## Coding standards
@@ -219,7 +220,7 @@ This appends a trailer to your commit message:
 Signed-off-by: Your Name <you@example.com>
 ```
 
-The name and email must match your `git config user.name` and `user.email`. Commits without a valid sign-off cannot be merged: CI checks every commit's subject and sign-off (`commits` job), and a pull request fails until they are fixed. If you forgot to sign off, amend with:
+The name and email must match your `git config user.name` and `user.email`. Commits without a valid sign-off cannot be merged: CI checks every commit's subject and sign-off, and the pull request title, which becomes the squash commit's subject (`commits` job); a pull request fails until they are fixed. If you forgot to sign off, amend with:
 
 ```bash
 git commit --amend -s --no-edit
@@ -251,4 +252,4 @@ Open an issue. For bugs, include the `sdo` version (`sdo --version`), your OS, t
 
 ## Security
 
-Do not file security issues in the public tracker. Report vulnerabilities privately to the maintainer as described in `SECURITY.md`. Never include a live `SDO_TOKEN` or any credential in an issue, pull request, test fixture, or commit.
+Do not file security issues in the public tracker. Report vulnerabilities privately to the maintainer as described in [SECURITY.md](SECURITY.md). Never include a live `SDO_TOKEN` or any credential in an issue, pull request, test fixture, or commit.

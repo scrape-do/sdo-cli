@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
+// Package cmd is the sdo CLI's wiring: its commands, flags, output and exit
+// codes, run by cmd/sdo. It is not a stable Go API and may change in any
+// release; to call Scrape.do from Go, use github.com/scrape-do/sdo-go.
 package cmd
 
 import (

@@ -17,7 +17,8 @@ Before 1.0, a minor version may contain breaking changes; each is marked **Break
 - `sdo mcp serve` names itself `sdo` in the MCP handshake (`serverInfo`); it
   reported the standalone server's name, `sdo-mcp`, with the CLI's version.
 - The `scrape_plugin` tool description lists the documented
-  `google/search/ai-overview` and `google/shopping/product/stores` routes.
+  `google/search/ai-overview`, `google/shopping/product/stores`, `google/lens`
+  and `google/goto` routes.
 
 ## [0.3.0] - 2026-11-15
 
