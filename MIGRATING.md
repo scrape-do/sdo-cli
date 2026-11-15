@@ -21,8 +21,8 @@ output. Both surfaces are part of the contract:
   or making a previously optional argument required is a breaking change.
   Adding a new optional flag with a backward-compatible default is **not**.
 - **Output format.** Changing the structure of JSON output (`sdo plugin`,
-  `sdo jobs …`, `sdo account`, `sdo jobs result --json`: renaming, removing, or
-  retyping a field), changing JSON field nullability, or altering
+  `sdo jobs …`, `sdo account`, `sdo usage`, `sdo jobs result --json`: renaming,
+  removing, or retyping a field), changing JSON field nullability, or altering
   the default human-readable layout in a way that breaks reasonable parsing is
   a breaking change. Adding a new field to JSON output is **not** breaking;
   scripts must ignore unknown fields.

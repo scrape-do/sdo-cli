@@ -122,7 +122,7 @@ sdo version
 sdo version --check
 ```
 
-Every call spends Scrape.do credits; `--render` and `--super` cost more.
+Every scrape and plugin call spends Scrape.do credits; `--render` and `--super` cost more.
 `sdo scrape --help` lists a flag for each documented scrape parameter.
 `--param key=value` (repeatable) sends any other gateway parameter as is; it
 cannot set the token or the URL, or a parameter that has a flag.
@@ -244,7 +244,7 @@ sdo account
 
 `sdo jobs result` exits `0` only when the task succeeded. A failed or canceled
 task exits `1` with the task's error message; a task that has not finished yet
-(queued, pending, rotating) exits `4`. In both cases nothing is written to
+(queuing, queued, pending, rotating) exits `4`. In both cases nothing is written to
 stdout (with `--json`, the task result is printed either way).
 
 ## MCP server
