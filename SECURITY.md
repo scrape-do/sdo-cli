@@ -31,12 +31,38 @@ PGP is available on request.
 
 - **Acknowledgement** within 3 business days.
 - **Triage and severity assessment** within 7 business days.
-- A coordinated fix and disclosure timeline communicated directly to you.
+- **Fix and coordinated release:** target **30 days** for High/Critical severity,
+  **90 days** for Low/Moderate. If we expect to exceed these, we'll tell you and
+  agree on a revised timeline.
 - Credit in the advisory and release notes, unless you ask to remain anonymous.
+
+Severity is assessed using CVSS v3.1, with weight given to token exposure and
+to data/instruction boundary impact for the CLI and its bundled MCP server.
 
 Governance is **Solo + AI**: the founder is the sole approver of every change, including security fixes. Contributions are accepted under **DCO sign-off** (`Signed-off-by` trailer), not a CLA. There is no committee and no external maintainer who can independently merge a fix; this keeps the trust boundary small and auditable.
 
-Please give us a reasonable window to ship a fix before any public disclosure.
+We ask reporters to keep the issue private until a fixed release is available, or
+until 90 days have passed if no fix has shipped — whichever comes first. We're
+happy to coordinate a disclosure date with you.
+
+## GHSA → CVE Process
+
+We coordinate disclosure through GitHub's advisory system:
+
+1. **Triage.** We confirm the report and assign a severity within the timelines above.
+2. **Draft GHSA.** We open a private GitHub Security Advisory (GHSA) for the
+   repository, listing affected versions, the fixed version, severity, and
+   workarounds. The reporter is credited unless they ask to remain anonymous.
+3. **Fix privately.** Where the change is sensitive, we develop and review the fix
+   in a private fork tied to the advisory.
+4. **Request CVE.** We use GitHub as a CVE Numbering Authority (CNA) to request a
+   **CVE ID** through the advisory. The CVE is linked to the GHSA.
+5. **Release.** We publish a patched release of the latest minor (a new Git tag),
+   reference the advisory in the changelog, and retract affected versions with
+   `retract` directives in `go.mod` where applicable.
+6. **Publish.** We publish the GHSA — which propagates the CVE to the GitHub
+   Advisory Database and the Go vulnerability database (`vuln.go.dev`) — so users
+   running `govulncheck` and dependency scanners are alerted automatically.
 
 ## Token Handling
 
@@ -64,7 +90,7 @@ Design properties that bound this risk:
 - **Bounded output.** Each tool result carries at most 128 KiB of outside text; truncation is stated outside the fenced block.
 - **Token stays server-side.** The token is read by the `sdo` process (same precedence as the CLI) and held only there. It is **not** a tool argument, and every tool result — success or error — passes through the same redaction as CLI output before it reaches the host, so a gateway or plugin that echoes the token cannot hand it to the model.
 - **Validated input.** Tool arguments are checked against each tool's closed input schema before anything is sent: an unknown argument or a mistyped value is a JSON-RPC `-32602` error, never silently dropped or coerced. Plugin routes chosen by the model are checked against the documented route shape (no `../`, `?` or `#`), and plugin parameters cannot carry a `token`.
-- **Bounded, cancellable work.** At most 4 tool calls run at once; a `notifications/cancelled` from the host abandons the call (and its gateway request) and suppresses its reply. Each call spends Scrape.do credits, and the tool descriptions say so.
+- **Bounded, cancellable work.** At most 4 tool calls run at once; a `notifications/cancelled` from the host abandons the call (and its gateway request) and suppresses its reply. The scrape tools and the two job-creating tools spend credits; each tool description says whether it does.
 - **Local transport.** The server communicates over local stdio with the host process that launched it. It does not open a network listener.
 - **No privilege escalation.** MCP tools expose the same Scrape.do operations the CLI already offers under the same token.
 
